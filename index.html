@@ -248,6 +248,23 @@ function generate() {
     L.push('');
   }
 
+  // ===== 趋势对比（本周 vs 上周）=====
+  const prevMonday = new Date(monday); prevMonday.setDate(prevMonday.getDate() - 7);
+  const prevSunday = new Date(sunday); prevSunday.setDate(prevSunday.getDate() - 7);
+  let prevFocus = 0;
+  if (vsr) (vsr.focusSessions || []).forEach(s => {
+    if (s.date && inRange(s.date, prevMonday, prevSunday)) prevFocus += Number(s.duration) || 0;
+  });
+  if (focusTotal > 0 || prevFocus > 0) {
+    L.push('## 📈 与上周对比');
+    if (prevFocus === 0) L.push(`- 专注 ${fmtMin(focusTotal)}（上周 0，重新起步）`);
+    else {
+      const delta = Math.round((focusTotal - prevFocus) / prevFocus * 100);
+      L.push(`- 专注 ${fmtMin(focusTotal)}（上周 ${fmtMin(prevFocus)}，${delta >= 0 ? '+' : ''}${delta}%）`);
+    }
+    L.push('');
+  }
+
   // ===== 总结 =====
   L.push('## 🎯 本周小结');
   const summary = [];
