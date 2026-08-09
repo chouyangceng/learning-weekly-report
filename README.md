@@ -34,3 +34,7 @@
 | 自习室 | `focusSessions[]`（date/duration/subjectName/timestamp）、`tasks[]`、`dailyReviews[]` |
 | 错题本 | `questions[]`（createdAt/reviewHistory/reviewCount/subject）、`done{}`（日期→id数组） |
 | 资料管家 | `items[]`（time/status/subject）、`log[]` |
+
+## 在线访问
+
+https://chouyangceng.github.io/learning-weekly-report/
