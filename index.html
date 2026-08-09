@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#2b8a78">
+<title>学习周报生成器 · 一周复盘</title>
+<style>
+:root{--ink:#1f2525;--muted:#607081;--line:#d5dee6;--paper:#f2f5f8;--green:#2b8a78;--accent:#e8835e}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:var(--paper);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif}
+main{max-width:960px;margin:auto;padding:28px 20px 60px}
+h1{font-size:30px;letter-spacing:-.04em;margin:0 0 6px}
+h1 span{color:var(--green)}
+.sub{color:var(--muted);font-size:13px;margin:0 0 28px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:18px}
+.card h2{font-size:16px;margin:0 0 14px;letter-spacing:-.02em}
+.card h2 small{color:var(--muted);font-weight:400;font-size:11px;margin-left:8px}
+.upload-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label.file-btn{display:inline-block;padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;transition:border-color .15s}
+label.file-btn:hover{border-color:var(--green)}
+label.file-btn input{display:none}
+.file-state{margin:10px 0 0;font-size:12px;color:var(--muted);min-height:18px}
+.file-state b{color:var(--green)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:#eef2f6;color:var(--ink);border:1px solid var(--line)}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+.preview{white-space:pre-wrap;background:#1f2525;color:#e8eef2;border-radius:10px;padding:20px;font-size:12.5px;line-height:1.7;max-height:520px;overflow:auto;font-family:'SF Mono',Menlo,Consolas,monospace}
+.week-nav{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.week-nav button{border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:400;padding:6px 12px}
+.week-nav b{font-size:13px;min-width:150px;text-align:center}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;background:#e7f3f0;color:var(--green);font-size:11px;margin-left:6px}
+.note{font-size:11px;color:var(--muted);line-height:1.7;margin:10px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>学习周报生成器<span> · 一周复盘</span></h1>
+  <p class="sub">导入「虚拟自习室」「拾题错题本」「考研资料管家」的导出文件，自动汇总本周学习数据并生成 Markdown 周报。</p>
+
+  <div class="card">
+    <h2>1. 导入数据 <small>三种导出文件可任选其一或全部导入</small></h2>
+    <div class="upload-row">
+      <label class="file-btn">📊 虚拟自习室 JSON<input type="file" id="f-vsr" accept=".json"></label>
+      <label class="file-btn">📝 错题本备份 JSON<input type="file" id="f-mistake" accept=".json"></label>
+      <label class="file-btn">📁 资料管家同步包 JSON<input type="file" id="f-material" accept=".json"></label>
+    </div>
+    <div class="file-state" id="fileState">尚未导入任何文件</div>
+  </div>
+
+  <div class="card">
+    <h2>2. 选择周次</h2>
+    <div class="week-nav">
+      <button id="prevWeek">← 上一周</button>
+      <b id="weekLabel">—</b>
+      <button id="nextWeek">下一周 →</button>
+      <button id="thisWeek">本周</button>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="btnGenerate" disabled>生成周报</button>
+      <button class="btn-ghost" id="btnCopy" disabled>复制 Markdown</button>
+      <button class="btn-ghost" id="btnDownload" disabled>下载 .md</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. 周报预览</h2>
+    <div class="preview" id="preview">导入数据后点击「生成周报」。</div>
+  </div>
+
+  <p class="note">隐私说明：全部数据只在你的浏览器中处理，不上传任何服务器。导出文件来源：① 虚拟自习室 → 专注统计 → 导出数据(JSON)；② 错题本 → 今日复习 → 导出备份；③ 资料管家 → 同步(生成同步包)。</p>
+</main>
+
+<script>
+const state = { vsr: null, mistake: null, material: null, weekOffset: 0 };
+const $ = id => document.getElementById(id);
+
+function readJSON(file, key) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      state[key] = data;
+      updateFileState();
+      enableButtons();
+    } catch (e) {
+      alert(`「${file.name}」不是有效的 JSON 文件`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+$('f-vsr').addEventListener('change', e => readJSON(e.target.files[0], 'vsr'));
+$('f-mistake').addEventListener('change', e => readJSON(e.target.files[0], 'mistake'));
+$('f-material').addEventListener('change', e => readJSON(e.target.files[0], 'material'));
+
+function updateFileState() {
+  const parts = [];
+  if (state.vsr) parts.push(`自习室：${state.vsr.focusSessions?.length ?? 0} 条专注记录`);
+  if (state.mistake) parts.push(`错题本：${state.mistake.questions?.length ?? 0} 道题`);
+  if (state.material) parts.push(`资料管家：${state.material.items?.length ?? 0} 条资料`);
+  $('fileState').innerHTML = parts.length ? parts.map(p => `<b>✓</b> ${p}`).join(' &nbsp; ') : '尚未导入任何文件';
+}
+
+function enableButtons() {
+  const ready = !!(state.vsr || state.mistake || state.material);
+  $('btnGenerate').disabled = !ready;
+}
+
+function weekRange(offset) {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) - offset * 7);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { monday, sunday };
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function dateKey(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function inRange(key, monday, sunday) {
+  const d = new Date(key + 'T12:00:00');
+  return d >= monday && d <= sunday;
+}
+function fmtMin(m) { return m >= 60 ? `${Math.floor(m/60)}小时${m%60? m%60+'分':''}` : `${m} 分钟`; }
+
+function renderWeekLabel() {
+  const { monday, sunday } = weekRange(state.weekOffset);
+  $('weekLabel').textContent = `${dateKey(monday)} ~ ${dateKey(sunday)}`;
+}
+$('prevWeek').addEventListener('click', () => { state.weekOffset++; renderWeekLabel(); });
+$('nextWeek').addEventListener('click', () => { state.weekOffset = Math.max(0, state.weekOffset - 1); renderWeekLabel(); });
+$('thisWeek').addEventListener('click', () => { state.weekOffset = 0; renderWeekLabel(); });
+
+function generate() {
+  const { monday, sunday } = weekRange(state.weekOffset);
+  const L = [];
+  L.push(`# 学习周报 · ${dateKey(monday)} ~ ${dateKey(sunday)}`);
+  L.push('');
+  L.push(`> 自动生成于 ${new Date().toLocaleString('zh-CN')} · 数据仅本地汇总`);
+  L.push('');
+
+  // ===== 专注数据（自习室） =====
+  const vsr = state.vsr;
+  let focusTotal = 0, focusCount = 0, focusBySubject = {}, focusByDay = {};
+  if (vsr) {
+    (vsr.focusSessions || []).forEach(s => {
+      if (!s.date || !inRange(s.date, monday, sunday)) return;
+      const d = Number(s.duration) || 0;
+      focusTotal += d; focusCount++;
+      const sub = s.subjectName && s.subjectName !== '未分类' ? s.subjectName : '未分类';
+      focusBySubject[sub] = (focusBySubject[sub] || 0) + d;
+      focusByDay[s.date] = (focusByDay[s.date] || 0) + d;
+    });
+  }
+  L.push('## 📊 专注情况');
+  if (focusCount) {
+    L.push(`- 本周专注：**${fmtMin(focusTotal)}**，共 **${focusCount}** 次`);
+    const best = Object.entries(focusByDay).sort((a,b) => b[1]-a[1])[0];
+    if (best) L.push(`- 最高效的一天：${best[0]}（${fmtMin(best[1])}）`);
+    const subRank = Object.entries(focusBySubject).sort((a,b) => b[1]-a[1]).slice(0,5);
+    if (subRank.length) L.push(`- 科目分布：${subRank.map(([k,v]) => `${k} ${fmtMin(v)}`).join('、')}`);
+  } else {
+    L.push('- 本周暂无专注记录');
+  }
+  L.push('');
+
+  // ===== 任务 / 复盘（自习室） =====
+  if (vsr) {
+    const doneTasks = (vsr.tasks || []).filter(t => t.completed && t.completedAt && inRange(dateKey(new Date(t.completedAt)), monday, sunday));
+    const reviews = (vsr.dailyReviews || []).filter(r => inRange(dateKey(new Date(r.createdAt || r.timestamp || Date.now())), monday, sunday));
+    if (doneTasks.length || reviews.length) {
+      L.push('## ✅ 任务与复盘');
+      if (doneTasks.length) L.push(`- 完成任务：**${doneTasks.length}** 项`);
+      if (reviews.length) L.push(`- 每日复盘：**${reviews.length}** 篇`);
+      L.push('');
+    }
+  }
+
+  // ===== 错题数据（错题本） =====
+  const mistake = state.mistake;
+  let newQ = 0, reviewed = 0, mastered = 0, weak = {};
+  if (mistake) {
+    (mistake.questions || []).forEach(q => {
+      const created = new Date(q.createdAt || q.updatedAt);
+      if (created >= monday && created <= sunday) newQ++;
+      (q.reviewHistory || []).forEach(h => {
+        if (h.at && inRange(dateKey(new Date(h.at)), monday, sunday)) reviewed++;
+      });
+      if ((q.reviewCount || 0) >= 3 && !q.nextReview) mastered++;
+      const sub = q.subject || '未分类';
+      weak[sub] = (weak[sub] || 0) + 1;
+    });
+    const doneDays = Object.entries(mistake.done || {}).filter(([d]) => inRange(d, monday, sunday));
+    const reviewedDone = doneDays.reduce((n, [, ids]) => n + (Array.isArray(ids) ? ids.length : 0), 0);
+    if (newQ || reviewed || reviewedDone) {
+      L.push('## 📝 错题情况');
+      if (newQ) L.push(`- 新增错题：**${newQ}** 道`);
+      if (reviewedDone) L.push(`- 完成复习：**${reviewedDone}** 题次`);
+      const weakRank = Object.entries(weak).sort((a,b) => b[1]-a[1]).slice(0,3);
+      if (weakRank.length) L.push(`- 薄弱科目：${weakRank.map(([k,v]) => `${k} ${v}题`).join('、')}`);
+      L.push('');
+    }
+  }
+
+  // ===== 资料整理（资料管家） =====
+  const material = state.material;
+  if (material) {
+    const items = material.items || [];
+    const newItems = items.filter(x => inRange(dateKey(new Date()), monday, sunday) && x.time && inRange(x.time.slice(0,10), monday, sunday));
+    const organized = items.filter(x => x.status === '已整理');
+    const bySubject = {};
+    items.forEach(x => bySubject[x.subject] = (bySubject[x.subject] || 0) + 1);
+    L.push('## 🗂️ 资料整理');
+    L.push(`- 资料总数：**${items.length}** 条${organized.length ? `，已整理 **${organized.length}** 条` : ''}`);
+    const top = Object.entries(bySubject).sort((a,b) => b[1]-a[1]).slice(0,5);
+    if (top.length) L.push(`- 科目分布：${top.map(([k,v]) => `${k} ${v}条`).join('、')}`);
+    L.push('');
+  }
+
+  // ===== 总结 =====
+  L.push('## 🎯 本周小结');
+  const summary = [];
+  if (focusTotal) summary.push(`专注 ${fmtMin(focusTotal)}`);
+  if (newQ) summary.push(`新录错题 ${newQ} 道`);
+  if (reviewed) summary.push(`复习 ${reviewed} 次`);
+  if (material) summary.push(`资料 ${(material.items||[]).length} 条`);
+  L.push(summary.length ? `- ${summary.join('；')}。` : '- 本周数据较少，建议恢复节奏。');
+  L.push('');
+  L.push('---');
+  L.push('*生成器：学习周报 · 导入三个工具的导出文件即可使用*');
+  return L.join('\n');
+}
+
+$('btnGenerate').addEventListener('click', () => {
+  $('preview').textContent = generate();
+  $('btnCopy').disabled = false;
+  $('btnDownload').disabled = false;
+});
+
+$('btnCopy').addEventListener('click', async () => {
+  const text = $('preview').textContent;
+  if (!text || text.startsWith('导入数据')) return;
+  try { await navigator.clipboard.writeText(text); alert('已复制到剪贴板'); }
+  catch { alert('复制失败，请手动选择复制'); }
+});
+
+$('btnDownload').addEventListener('click', () => {
+  const text = $('preview').textContent;
+  if (!text || text.startsWith('导入数据')) return;
+  const { monday, sunday } = weekRange(state.weekOffset);
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `学习周报-${dateKey(monday)}-${dateKey(sunday)}.md`;
+  a.click();
+  URL.revokeObjectURL(a);
+});
+
+renderWeekLabel();
+</script>
+</body>
+</html>
