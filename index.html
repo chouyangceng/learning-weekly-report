@@ -47,6 +47,7 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
       <label class="file-btn">📊 虚拟自习室 JSON<input type="file" id="f-vsr" accept=".json"></label>
       <label class="file-btn">📝 错题本备份 JSON<input type="file" id="f-mistake" accept=".json"></label>
       <label class="file-btn">📁 资料管家同步包 JSON<input type="file" id="f-material" accept=".json"></label>
+      <label class="file-btn">⚙️ 822引擎报告 (md)<input type="file" id="f-822" accept=".md,.txt,.json"></label>
     </div>
     <div class="file-state" id="fileState">尚未导入任何文件</div>
   </div>
@@ -75,7 +76,7 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
 </main>
 
 <script>
-const state = { vsr: null, mistake: null, material: null, weekOffset: 0 };
+const state = { vsr: null, mistake: null, material: null, k822: null, weekOffset: 0 };
 const $ = id => document.getElementById(id);
 
 function readJSON(file, key) {
@@ -97,17 +98,27 @@ function readJSON(file, key) {
 $('f-vsr').addEventListener('change', e => readJSON(e.target.files[0], 'vsr'));
 $('f-mistake').addEventListener('change', e => readJSON(e.target.files[0], 'mistake'));
 $('f-material').addEventListener('change', e => readJSON(e.target.files[0], 'material'));
+$('f-822').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.k822 = { name: file.name, text: reader.result };
+    updateFileState(); enableButtons();
+  };
+  reader.readAsText(file);
+});
 
 function updateFileState() {
   const parts = [];
   if (state.vsr) parts.push(`自习室：${state.vsr.focusSessions?.length ?? 0} 条专注记录`);
   if (state.mistake) parts.push(`错题本：${state.mistake.questions?.length ?? 0} 道题`);
   if (state.material) parts.push(`资料管家：${state.material.items?.length ?? 0} 条资料`);
+  if (state.k822) parts.push(`822引擎：已导入`);
   $('fileState').innerHTML = parts.length ? parts.map(p => `<b>✓</b> ${p}`).join(' &nbsp; ') : '尚未导入任何文件';
 }
 
 function enableButtons() {
-  const ready = !!(state.vsr || state.mistake || state.material);
+  const ready = !!(state.vsr || state.mistake || state.material || state.k822);
   $('btnGenerate').disabled = !ready;
 }
 
@@ -205,6 +216,19 @@ function generate() {
       if (reviewedDone) L.push(`- 完成复习：**${reviewedDone}** 题次`);
       const weakRank = Object.entries(weak).sort((a,b) => b[1]-a[1]).slice(0,3);
       if (weakRank.length) L.push(`- 薄弱科目：${weakRank.map(([k,v]) => `${k} ${v}题`).join('、')}`);
+      L.push('');
+    }
+  }
+
+  // ===== 822 学习（822引擎报告） =====
+  if (state.k822) {
+    const report = state.k822.text || '';
+    const mastery = report.match(/模块掌握度[\s\S]*?训练统计/);
+    const train = report.match(/训练统计[\s\S]*?(?:##|$)/);
+    if (mastery) {
+      L.push('## ⚙️ 822 控制学习');
+      const moduleLines = mastery[0].split('\n').filter(l => l.startsWith('- '));
+      if (moduleLines.length) L.push(moduleLines.join('\n'));
       L.push('');
     }
   }
