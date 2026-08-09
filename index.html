@@ -256,6 +256,15 @@ function generate() {
   if (reviewed) summary.push(`复习 ${reviewed} 次`);
   if (material) summary.push(`资料 ${(material.items||[]).length} 条`);
   L.push(summary.length ? `- ${summary.join('；')}。` : '- 本周数据较少，建议恢复节奏。');
+  // 自动评语
+  const tips = [];
+  if (focusTotal >= 360) tips.push('专注时长充足（≥6小时），注意质量优先');
+  else if (focusTotal >= 180) tips.push('专注达标（≥3小时），保持节奏');
+  else if (focusTotal > 0) tips.push('专注偏少，检查是否被临时事务挤占');
+  if (newQ && !reviewed) tips.push('本周只录题没复习——错题要回看才有价值');
+  if (material && material.items.length >= 10) tips.push('资料较多，先整理归类再收新料');
+  if (tips.length) L.push('');
+  tips.forEach(t => L.push(`- 💡 ${t}`));
   L.push('');
   L.push('---');
   L.push('*生成器：学习周报 · 导入三个工具的导出文件即可使用*');
