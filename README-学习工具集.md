@@ -1,24 +1,24 @@
-# 🎯 考研工具全家桶 · 清华车辆 822
+# 🎯 学习工具集 · 清华车辆 822
 
-一套互相联动的考研数字工具链，服务"清华车辆工程考研"这一主线目标。
+一套互相联动的数字学习工具链，服务清华车辆工程 822 学习主线。
 
 ## 工具总览
 
 | 工具 | 仓库 | 用途 | 打开方式 |
 |---|---|---|---|
-| ⚙️ **822 考研引擎** | [822-kaoyan-engine](https://github.com/chouyangceng/822-kaoyan-engine) | 考点图谱/题型训练/结论卡/阶段验收/今日推荐 | 双击 index.html 或 GitHub Pages |
-| 🎯 **考研执行看板** | [kaoyan-dashboard](https://github.com/chouyangceng/kaoyan-dashboard) | 阶段1完整17周任务勾选 + 周复盘导出 | 双击 index.html |
-| 📝 **拾题错题本** | [mistake-notebook-kaoyan](https://github.com/chouyangceng/mistake-notebook-kaoyan) | 822控制科目录入/复习/跨端同步 | Electron 打包版或浏览器 |
+| ⚙️ **822 控制引擎** | [822-kaoyan-engine](https://github.com/chouyangceng/822-kaoyan-engine) | 考点图谱/题型训练/结论卡/阶段验收/今日推荐 | 双击 index.html 或 GitHub Pages |
+| 🎯 **学习执行看板** | [study-dashboard](https://github.com/chouyangceng/study-dashboard) | 阶段1完整17周任务勾选 + 周复盘导出 | 双击 index.html |
+| 📝 **拾题错题本** | [mistake-notebook](https://github.com/chouyangceng/mistake-notebook) | 822控制科目录入/复习/跨端同步 | Electron 打包版或浏览器 |
 | 📚 **虚拟自习室** | [virtual-study-room](https://github.com/chouyangceng/virtual-study-room) | 番茄钟 + 822计划导入 + 学科进度 | PWA / 单文件版 |
-| 🗂️ **考研资料管家** | [kaoyan-materials-manager](https://github.com/chouyangceng/kaoyan-materials-manager) | 资料索引 + 822目录 + 双端同步 | PWA / 浏览器 |
+| 🗂️ **资料管家** | [kaoyan-materials-manager](https://github.com/chouyangceng/kaoyan-materials-manager) | 资料索引 + 822目录 + 双端同步 | PWA / 浏览器 |
 | 📊 **学习周报生成器** | [learning-weekly-report](https://github.com/chouyangceng/learning-weekly-report) | 汇总四源数据生成周报 | 双击 index.html |
-| 📅 **考研计划 xlsx** | 桌面文件 | 总计划（已审计修复） | Excel / WPS |
+| 📅 **学习计划 xlsx** | 桌面文件 | 总计划（已审计修复） | Excel / WPS |
 
 ## 数据流
 
 ```
-清华822考研计划.xlsx（总计划）
-   ├──→ 考研执行看板（周任务执行+复盘）
+清华822学习计划.xlsx（总计划）
+   ├──→ 学习执行看板（周任务执行+复盘）
    ├──→ 822引擎（考点/题型/结论卡/阶段验收）
    ├──→ 虚拟自习室（822计划导入+专注统计）
    └──→ 错题本（822控制错题+间隔复习）
