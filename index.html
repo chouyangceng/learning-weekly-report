@@ -22,6 +22,8 @@ label.file-btn:hover{border-color:var(--green)}
 label.file-btn input{display:none}
 .file-state{margin:10px 0 0;font-size:12px;color:var(--muted);min-height:18px}
 .file-state b{color:var(--green)}
+.file-state[data-tone="success"]{color:#236c5e}
+.file-state[data-tone="error"]{color:#a4452f}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
 .btn-primary{background:var(--green);color:#fff}
@@ -34,6 +36,21 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
 .week-nav b{font-size:13px;min-width:150px;text-align:center}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;background:#e7f3f0;color:var(--green);font-size:11px;margin-left:6px}
 .note{font-size:11px;color:var(--muted);line-height:1.7;margin:10px 0 0}
+button:focus-visible,label.file-btn:focus-within{outline:3px solid color-mix(in srgb,var(--green) 32%,transparent);outline-offset:2px}
+@media (max-width:560px){
+  main{padding:20px 14px 44px}
+  h1{font-size:26px}
+  .card{padding:16px}
+  .card h2 small{display:block;margin:4px 0 0;line-height:1.5}
+  .upload-row label{width:100%;text-align:center}
+  .week-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .week-nav b{grid-column:1/-1;grid-row:1;min-width:0;padding:4px 0}
+  .week-nav button{width:100%}
+  #thisWeek{grid-column:1/-1}
+  .actions{display:grid;grid-template-columns:1fr 1fr}
+  .actions .btn-primary{grid-column:1/-1}
+  .actions button{width:100%}
+}
 </style>
 </head>
 <body>
@@ -49,14 +66,14 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
       <label class="file-btn">📁 资料管家同步包 JSON<input type="file" id="f-material" accept=".json"></label>
       <label class="file-btn">⚙️ 822引擎报告 (md)<input type="file" id="f-822" accept=".md,.txt,.json"></label>
     </div>
-    <div class="file-state" id="fileState">尚未导入任何文件</div>
+    <div class="file-state" id="fileState" role="status" aria-live="polite">尚未导入任何文件</div>
   </div>
 
   <div class="card">
     <h2>2. 选择周次</h2>
     <div class="week-nav">
       <button id="prevWeek">← 上一周</button>
-      <b id="weekLabel">—</b>
+      <b id="weekLabel">待计算</b>
       <button id="nextWeek">下一周 →</button>
       <button id="thisWeek">本周</button>
     </div>
@@ -65,6 +82,7 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
       <button class="btn-ghost" id="btnCopy" disabled>复制 Markdown</button>
       <button class="btn-ghost" id="btnDownload" disabled>下载 .md</button>
     </div>
+    <div class="file-state" id="actionState" role="status" aria-live="polite"></div>
   </div>
 
   <div class="card">
@@ -79,6 +97,12 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;
 const state = { vsr: null, mistake: null, material: null, k822: null, weekOffset: 0 };
 const $ = id => document.getElementById(id);
 
+function setStatus(id, message, tone = '') {
+  const target = $(id);
+  target.textContent = message;
+  target.dataset.tone = tone;
+}
+
 function readJSON(file, key) {
   if (!file) return;
   const reader = new FileReader();
@@ -87,11 +111,13 @@ function readJSON(file, key) {
       const data = JSON.parse(reader.result);
       state[key] = data;
       updateFileState();
+      setStatus('actionState', `已读取「${file.name}」`, 'success');
       enableButtons();
-    } catch (e) {
-      alert(`「${file.name}」不是有效的 JSON 文件`);
+    } catch {
+      setStatus('actionState', `导入失败：「${file.name}」不是有效的 JSON 文件`, 'error');
     }
   };
+  reader.onerror = () => setStatus('actionState', `导入失败：无法读取「${file.name}」`, 'error');
   reader.readAsText(file);
 }
 
@@ -103,8 +129,11 @@ $('f-822').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = () => {
     state.k822 = { name: file.name, text: reader.result };
-    updateFileState(); enableButtons();
+    updateFileState();
+    setStatus('actionState', `已读取「${file.name}」`, 'success');
+    enableButtons();
   };
+  reader.onerror = () => setStatus('actionState', `导入失败：无法读取「${file.name}」`, 'error');
   reader.readAsText(file);
 });
 
@@ -114,7 +143,7 @@ function updateFileState() {
   if (state.mistake) parts.push(`错题本：${state.mistake.questions?.length ?? 0} 道题`);
   if (state.material) parts.push(`资料管家：${state.material.items?.length ?? 0} 条资料`);
   if (state.k822) parts.push(`822引擎：已导入`);
-  $('fileState').innerHTML = parts.length ? parts.map(p => `<b>✓</b> ${p}`).join(' &nbsp; ') : '尚未导入任何文件';
+  setStatus('fileState', parts.length ? `已导入：${parts.join('；')}` : '尚未导入任何文件', parts.length ? 'success' : '');
 }
 
 function enableButtons() {
@@ -138,6 +167,14 @@ function dateKey(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.
 function inRange(key, monday, sunday) {
   const d = new Date(key + 'T12:00:00');
   return d >= monday && d <= sunday;
+}
+function dateValueInRange(value, monday, sunday) {
+  if (value === undefined || value === null || value === '') return false;
+  const d = new Date(value);
+  return !Number.isNaN(d.getTime()) && d >= monday && d <= sunday;
+}
+function countNewMaterials(items, monday, sunday) {
+  return items.filter(item => dateValueInRange(item.time, monday, sunday)).length;
 }
 function fmtMin(m) { return m >= 60 ? `${Math.floor(m/60)}小时${m%60? m%60+'分':''}` : `${m} 分钟`; }
 
@@ -235,14 +272,19 @@ function generate() {
 
   // ===== 资料整理（资料管家） =====
   const material = state.material;
+  let newMaterialCount = 0;
   if (material) {
     const items = material.items || [];
-    const newItems = items.filter(x => inRange(dateKey(new Date()), monday, sunday) && x.time && inRange(x.time.slice(0,10), monday, sunday));
+    newMaterialCount = countNewMaterials(items, monday, sunday);
     const organized = items.filter(x => x.status === '已整理');
     const bySubject = {};
-    items.forEach(x => bySubject[x.subject] = (bySubject[x.subject] || 0) + 1);
+    items.forEach(x => {
+      const subject = x.subject || '未分类';
+      bySubject[subject] = (bySubject[subject] || 0) + 1;
+    });
     L.push('## 🗂️ 资料整理');
     L.push(`- 资料总数：**${items.length}** 条${organized.length ? `，已整理 **${organized.length}** 条` : ''}`);
+    L.push(`- 本周新增：**${newMaterialCount}** 条`);
     const top = Object.entries(bySubject).sort((a,b) => b[1]-a[1]).slice(0,5);
     if (top.length) L.push(`- 科目分布：${top.map(([k,v]) => `${k} ${v}条`).join('、')}`);
     L.push('');
@@ -271,14 +313,14 @@ function generate() {
   if (focusTotal) summary.push(`专注 ${fmtMin(focusTotal)}`);
   if (newQ) summary.push(`新录错题 ${newQ} 道`);
   if (reviewed) summary.push(`复习 ${reviewed} 次`);
-  if (material) summary.push(`资料 ${(material.items||[]).length} 条`);
+  if (material) summary.push(`新增资料 ${newMaterialCount} 条`);
   L.push(summary.length ? `- ${summary.join('；')}。` : '- 本周数据较少，建议恢复节奏。');
   // 自动评语
   const tips = [];
   if (focusTotal >= 360) tips.push('专注时长充足（≥6小时），注意质量优先');
   else if (focusTotal >= 180) tips.push('专注达标（≥3小时），保持节奏');
   else if (focusTotal > 0) tips.push('专注偏少，检查是否被临时事务挤占');
-  if (newQ && !reviewed) tips.push('本周只录题没复习——错题要回看才有价值');
+  if (newQ && !reviewed) tips.push('本周只录题没复习，错题要回看才有价值');
   if (material && material.items.length >= 10) tips.push('资料较多，先整理归类再收新料');
   if (tips.length) L.push('');
   tips.forEach(t => L.push(`- 💡 ${t}`));
@@ -292,13 +334,18 @@ $('btnGenerate').addEventListener('click', () => {
   $('preview').textContent = generate();
   $('btnCopy').disabled = false;
   $('btnDownload').disabled = false;
+  setStatus('actionState', '周报已生成，可以复制或下载。', 'success');
 });
 
 $('btnCopy').addEventListener('click', async () => {
   const text = $('preview').textContent;
   if (!text || text.startsWith('导入数据')) return;
-  try { await navigator.clipboard.writeText(text); alert('已复制到剪贴板'); }
-  catch { alert('复制失败，请手动选择复制'); }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('actionState', 'Markdown 已复制到剪贴板。', 'success');
+  } catch {
+    setStatus('actionState', '复制失败，请在预览区域手动选择并复制。', 'error');
+  }
 });
 
 $('btnDownload').addEventListener('click', () => {
@@ -311,6 +358,7 @@ $('btnDownload').addEventListener('click', () => {
   a.download = `学习周报-${dateKey(monday)}-${dateKey(sunday)}.md`;
   a.click();
   URL.revokeObjectURL(a);
+  setStatus('actionState', `已下载「${a.download}」`, 'success');
 });
 
 renderWeekLabel();
